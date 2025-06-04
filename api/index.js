@@ -41,7 +41,6 @@ import Connect from "../db/db.js";
 import "dotenv/config";
 import cors from "cors";
 
-// Create express app
 const app = express();
 
 // Middleware
@@ -61,29 +60,28 @@ app.get("/", (req, res) => {
   res.send("Hello Mubeen!");
 });
 
-// Connect to DB and start server (modified for serverless)
-let isDbConnected = false;
-
-const ensureDbConnection = async () => {
-  if (!isDbConnected) {
+// Local Dev: Start Express server normally
+if (process.env.VERCEL_ENV !== "production") {
+  (async () => {
     try {
-      await Connect();
-      isDbConnected = true;
-      console.log("MongoDB Connected Successfully");
+      await Connect(); // Connect DB once
+      const PORT = process.env.PORT || 3000;
+      app.listen(PORT, () => {
+        console.log(`Local server running on http://localhost:${PORT}`);
+      });
     } catch (err) {
-      console.log("Error connecting to MongoDB:", err);
-      throw err;
+      console.error("Local server failed:", err);
     }
-  }
-};
+  })();
+}
 
-// This is the serverless handler
+// Production: Export serverless handler
 export default async (req, res) => {
   try {
-    await ensureDbConnection();
+    await Connect(); // Reconnect on each request (serverless cold start)
     return app(req, res);
   } catch (err) {
-    console.error("Serverless function error:", err);
+    console.error("Serverless error:", err);
     return res.status(500).json({ error: "Internal Server Error" });
   }
 };
